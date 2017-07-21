@@ -21,8 +21,8 @@ class Logger {
     private static $level  = 100;       // ログレベル
     private static $append = true;      // 追記モード
 
-    private static $filepath = null;    // ログフォルダ、ログファイル名
-    private static $fp = null;          // ファイルハンドラ
+    private static $filepath = 'php://output';  // ログファイル名
+    private static $fp = null;                  // ファイルハンドラ
 
     /******************************
         ログファイル出力先とログレベルの設定
@@ -100,23 +100,21 @@ class Logger {
         self::write(self::logformat($level_str, $value));
     }
 
-    public static function fatal ($value) { self::log(self::FATAL,  $value); }
-    public static function error ($value) { self::log(self::ERROR,  $value); }
-    public static function warn  ($value) { self::log(self::WARN,   $value); }
-    public static function notice($value) { self::log(self::NOTICE, $value); }
-    public static function info  ($value) { self::log(self::INFO,   $value); }
-    public static function trace ($value) { self::log(self::TRACE,  $value); }
     public static function debug ($value) { self::log(self::DEBUG,  $value); }
+    public static function trace ($value) { self::log(self::TRACE,  $value); }
+    public static function info  ($value) { self::log(self::INFO,   $value); }
+    public static function notice($value) { self::log(self::NOTICE, $value); }
+    public static function warn  ($value) { self::log(self::WARN,   $value); }
+    public static function error ($value) { self::log(self::ERROR,  $value); }
+    public static function fatal ($value) { self::log(self::FATAL,  $value); }
 
     /******************************
         ログの書式設定
     ******************************/
     public static function logformat($level_str, $str) {
         $str = rtrim($str, "\n");
-        $user = Auth::login_user();
-        $userid = $user === null ? '' : $user->userid;
 
-        $logstr = sprintf("%s [%s]%s %s", date("Y-m-d H:i:s"), $level_str, '('.$userid.')', $str);
+        $logstr = sprintf("%s [%s] %s", date("Y-m-d H:i:s"), $level_str, $str);
         return $logstr;
     }
 
