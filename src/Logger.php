@@ -1,6 +1,8 @@
 <?php
 
 class Logger {
+    const STDOUT = 'php://stdout';
+
     const DEBUG  = 100;
     const TRACE  = 150;
     const INFO   = 200;
@@ -21,29 +23,36 @@ class Logger {
     private static $level  = 100;       // ログレベル
     private static $append = true;      // 追記モード
 
-    private static $filepath = 'php://output';  // ログファイル名
+
+    private static $filepath = self::STDOUT;    // ログファイル名
     private static $fp = null;                  // ファイルハンドラ
 
     /******************************
         ログファイル出力先とログレベルの設定
     ******************************/
-    public static function setting($filepath = null, $level = null){
-        if (!is_null($filepath)) self::$filepath = $filepath;
-        if (!is_null($level)) self::$level = $level;
+    public static function setFilepath($filepath)
+    {
+        self::$filepath = $filepath;
+    }
+
+    public static function setLevel($level)
+    {
+        self::$level = $level;
     }
 
     /******************************
         ログファイルを開く
     ******************************/
     private static function open_file(){
-        // フォルダが無ければ作成する
-        if (!is_file(self::$filepath)) {
-            $dir = dirname(self::$filepath);
-            if (!is_dir($dir)) {
-                $success = mkdir($dir, 0777, true);
-                if ($succcess === false) {
-                    self::send_error("Failed to create a directory [{$dir}].");
-                    return false;
+        if (self::$filepath !== self::STDOUT) {
+            if (!is_file(self::$filepath)) {
+                $dir = dirname(self::$filepath);
+                if (!is_dir($dir)) {
+                    $success = mkdir($dir, 0777, true);
+                    if ($success === false) {
+                        error_log("Failed to created a directory. {$dir}");
+                        return false;
+                    }
                 }
             }
         }
@@ -52,7 +61,7 @@ class Logger {
         $mode = self::$append ? 'a' : 'w';
         $fp = fopen(self::$filepath, $mode);
         if ($fp === false) {
-            self::send_error("Failed to open.");
+            error_log("Failed to open.");
             $fp = null;
             return false;
         }
@@ -64,8 +73,6 @@ class Logger {
         書き込み
     ******************************/
     protected static function write($str){
-        if (SERVER === DEVELOP) $str = mb_convert_encoding($str, 'sjis-win');
-
         if (self::$filepath === null) {
             error_log($str);
             return;
@@ -74,7 +81,7 @@ class Logger {
             return;
         }
         if (fwrite($fp, $str.PHP_EOL) === false) {
-            self::send_error("Failed to write.");
+            error_log("Failed to write.");
         }
     }
 
@@ -118,13 +125,4 @@ class Logger {
         return $logstr;
     }
 
-    /******************************
-        WARNINGを飛ばす
-    ******************************/
-    protected static function send_error($message) {
-        throw new LoggerException("LogError: $message");
-    }
-}
-
-class LoggerException extends RuntimeException{
 }
