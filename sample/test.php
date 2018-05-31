@@ -4,7 +4,7 @@ require_once __DIR__.'/../bootstrap.php';
 
 use Logger\Logger;
 
-$loglevel = 'FATAL';
+$loglevel = 'DEBUG';
 $filename = __DIR__.'/test.log';
 
 $logger = new Logger($loglevel, $filename);

@@ -36,6 +36,10 @@ class Logger {
             trigger_error('Invalid log level. Available levels are ALL, DEBUG, INFO, WARN, ERROR, FATAL and OFF.', E_USER_ERROR);
         }
 
+        if (!is_dir(dirname($filename)) && !mkdir(dirname($filename), 0777, true)) {
+            trigger_error("Failed to make log directory. '".dirname($filename)."'.", E_USER_ERROR);
+        }
+
         $this->priority = $priority;
         $this->filename = $filename;
     }
