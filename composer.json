@@ -1,0 +1,16 @@
+{
+    "name": "tiechel/php-logger",
+    "license": "MIT License",
+    "authors": [
+        {
+            "name": "tiechel",
+            "email": "alicetype.luna@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Logger\\": "src/"
+        }
+    },
+    "require": {}
+}
