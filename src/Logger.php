@@ -1,128 +1,152 @@
 <?php
 
+namespace Logger;
+
 class Logger {
-    const STDOUT = 'php://stdout';
+    /**
+     * ログレベル定数
+     */
+    const OFF     = 0;
+    const ALL     = 1024;
 
-    const DEBUG  = 100;
-    const TRACE  = 150;
-    const INFO   = 200;
-    const NOTICE = 250;
-    const WARN   = 300;
-    const ERROR  = 400;
-    const FATAL  = 500;
+    const FATAL   = 1;
+    const ERROR   = 3;
+    const WARN    = 7;
+    const INFO    = 15;
+    const DEBUG   = 31;
 
-    protected static $levels = array(
-        100 => 'DEBUG',
-        150 => 'TRACE',
-        200 => 'INFO',
-        250 => 'NOTICE',
-        300 => 'WARN',
-        400 => 'ERROR',
-        500 => 'FATAL'
-    );
-    private static $level  = 100;       // ログレベル
-    private static $append = true;      // 追記モード
+    /**
+     * ログ出力レベル
+     */
+    private $priority;
 
+    /**
+     * ログ出力ファイル
+     */
+    private $filename;
 
-    private static $filepath = self::STDOUT;    // ログファイル名
-    private static $fp = null;                  // ファイルハンドラ
-
-    /******************************
-        ログファイル出力先とログレベルの設定
-    ******************************/
-    public static function setFilepath($filepath)
+    /**
+     * コンストラクタ
+     * @param string $priority ログ出力レベル
+     * @param string $filename ログファイル名
+     */
+    public function __construct(string $priority, string $filename)
     {
-        self::$filepath = $filepath;
+        if (!defined('self::'.strtoupper($priority))) {
+            trigger_error('Invalid log level. Available levels are ALL, DEBUG, INFO, WARN, ERROR, FATAL and OFF.', E_USER_ERROR);
+        }
+
+        $this->priority = $priority;
+        $this->filename = $filename;
     }
 
-    public static function setLevel($level)
+    /**
+     * ログ出力レベルを数値化
+     * @return int
+     */
+    private function priority(): int
     {
-        self::$level = $level;
+        return constant('self::'.strtoupper($this->priority));
     }
 
-    /******************************
-        ログファイルを開く
-    ******************************/
-    private static function open_file(){
-        if (self::$filepath !== self::STDOUT) {
-            if (!is_file(self::$filepath)) {
-                $dir = dirname(self::$filepath);
-                if (!is_dir($dir)) {
-                    $success = mkdir($dir, 0777, true);
-                    if ($success === false) {
-                        error_log("Failed to created a directory. {$dir}");
-                        return false;
-                    }
-                }
-            }
+    /**
+     * fatalログを出力
+     */
+    public function fatal($message): bool
+    {
+        if ($this->priority() >= self::FATAL) {
+            return $this->log(__FUNCTION__, $message);
         }
-
-        // ファイルを開きポインタを後ろに移動する
-        $mode = self::$append ? 'a' : 'w';
-        $fp = fopen(self::$filepath, $mode);
-        if ($fp === false) {
-            error_log("Failed to open.");
-            $fp = null;
-            return false;
-        }
-        fseek($fp, 0, SEEK_END);
-        return $fp;
+        return false;
     }
 
-    /******************************
-        書き込み
-    ******************************/
-    protected static function write($str){
-        if (self::$filepath === null) {
-            error_log($str);
-            return;
+    /**
+     * errorログを出力
+     */
+    public function error($message): bool
+    {
+        if ($this->priority() >= self::ERROR) {
+            return $this->log(__FUNCTION__, $message);
         }
-        if (($fp = self::open_file()) === false) {
-            return;
-        }
-        if (fwrite($fp, $str.PHP_EOL) === false) {
-            error_log("Failed to write.");
-        }
+        return false;
     }
 
-    /******************************
-        ログ出力
-    ******************************/
-    protected static function log($level, $value) {
-        if (self::$level > $level) return;
+    /**
+     * warnログを出力
+     */
+    public function warn($message): bool
+    {
+        if ($this->priority() >= self::WARN) {
+            return $this->log(__FUNCTION__, $message);
+        }
+        return false;
+    }
 
-        // 配列とオブジェクトはStringに変換
+    /**
+     * infoログを出力
+     */
+    public function info($message): bool
+    {
+        if ($this->priority() >= self::INFO) {
+            return $this->log(__FUNCTION__, $message);
+        }
+        return false;
+    }
+
+    /**
+     * debugログを出力
+     */
+    public function debug($message): bool
+    {
+        if ($this->priority() >= self::DEBUG) {
+            return $this->log(__FUNCTION__, $message);
+        }
+        return false;
+    }
+
+    /**
+     * ログを出力
+     * @param string $level
+     * @param mixed  $message
+     */
+    public function log(string $level, $message): bool
+    {
+        return error_log($this->format($level, $message), 3, $this->filename);
+    }
+
+    /**
+     * ログの書式に変換した文字列を返す
+     * @param string $level
+     * @param mixed  $message
+     */
+    public function format(string $level, $message): string
+    {
+        return sprintf("%s [%s] %s", date('Y-m-d H:i:s'), strtoupper($level), $this->string($message)).PHP_EOL;
+    }
+
+    /**
+     * 入力変数を文字列にして返す
+     * @param  mixed    $value
+     * @return string
+     */
+    public function string($value): string
+    {
+        if (is_string($value)) {
+            return rtrim($value);
+        }
+
+        if (is_array($value)) {
+            return var_export($value, true);
+        }
+
         if (is_object($value)) {
             $rc = new ReflectionClass(get_class($value));
             if ($rc->hasMethod('__toString')) {
-                $value = (string)$value;
-            } else {
-                $value = var_export($value, true);
+                return (string)$value;
             }
-        } else if (is_array($value)) {
-            $value = var_export($value, true);
+            return var_export($value, true);
         }
 
-        $level_str = self::$levels[$level];
-        self::write(self::logformat($level_str, $value));
+        return (string)$value;
     }
-
-    public static function debug ($value) { self::log(self::DEBUG,  $value); }
-    public static function trace ($value) { self::log(self::TRACE,  $value); }
-    public static function info  ($value) { self::log(self::INFO,   $value); }
-    public static function notice($value) { self::log(self::NOTICE, $value); }
-    public static function warn  ($value) { self::log(self::WARN,   $value); }
-    public static function error ($value) { self::log(self::ERROR,  $value); }
-    public static function fatal ($value) { self::log(self::FATAL,  $value); }
-
-    /******************************
-        ログの書式設定
-    ******************************/
-    public static function logformat($level_str, $str) {
-        $str = rtrim($str, "\n");
-
-        $logstr = sprintf("%s [%s] %s", date("Y-m-d H:i:s"), $level_str, $str);
-        return $logstr;
-    }
-
 }
